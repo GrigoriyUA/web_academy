@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Калькулятор Калорій</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --orange:  #ff7043;
+      --orange2: #ff8a65;
+      --green:   #4caf50;
+      --yellow:  #ffb300;
+      --red:     #ef5350;
+      --text:    #2d1b00;
+      --muted:   #a07850;
+      --card:    rgba(255,255,255,0.92);
+      --border:  rgba(255,112,67,0.18);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(160deg, #fff8f0 0%, #fce8d5 50%, #fff3e0 100%);
+      font-family: 'Nunito', sans-serif;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 30px 16px 60px;
+      overflow-x: hidden;
+    }
+
+    #food-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+    }
+    .header h1 {
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: var(--orange);
+      text-shadow: 0 2px 12px rgba(255,112,67,0.25);
+    }
+    .header p {
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 3px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border-radius: 22px;
+      padding: 22px;
+      border: 1.5px solid var(--border);
+      box-shadow: 0 8px 32px rgba(255,112,67,0.12), 0 2px 8px rgba(0,0,0,0.04);
+      backdrop-filter: blur(16px);
+    }
+
+    /* ── Search ── */
+    .search-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .search-wrap {
+      flex: 1;
+      position: relative;
+    }
+
+    .input-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      background: #fff8f2;
+      border: 1.5px solid rgba(255,112,67,0.25);
+      border-radius: 12px;
+      padding: 11px 14px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(255,112,67,0.12);
+    }
+    input[type="number"] { width: 100px; }
+
+    /* Autocomplete */
+    .autocomplete {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: #fff;
+      border: 1.5px solid rgba(255,112,67,0.25);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      z-index: 100;
+      overflow: hidden;
+      display: none;
+    }
+    .autocomplete.open { display: block; }
+
+    .ac-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      cursor: pointer;
+      transition: background 0.1s;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .ac-item:hover, .ac-item.focused { background: #fff4ee; }
+    .ac-item .ac-emoji { font-size: 1.2rem; line-height: 1; }
+    .ac-item .ac-cal {
+      margin-left: auto;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--orange);
+    }
+
+    /* Add button */
+    .btn-add {
+      align-self: flex-end;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 11px 20px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, var(--orange), var(--orange2));
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.15s, filter 0.1s;
+      box-shadow: 0 4px 14px rgba(255,112,67,0.35);
+      white-space: nowrap;
+    }
+    .btn-add:hover  { filter: brightness(1.06); box-shadow: 0 6px 18px rgba(255,112,67,0.45); }
+    .btn-add:active { transform: scale(0.95); }
+
+    /* ── Error ── */
+    .error-msg {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--red);
+      min-height: 18px;
+      margin-top: 6px;
+    }
+
+    /* ── Items list ── */
+    .list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .list-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .btn-clear-list {
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--red);
+      background: rgba(239,83,80,0.08);
+      border: 1px solid rgba(239,83,80,0.2);
+      border-radius: 8px;
+      padding: 3px 10px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .btn-clear-list:hover { background: rgba(239,83,80,0.15); }
+
+    .items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      max-height: 320px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+    .items-list::-webkit-scrollbar { width: 4px; }
+    .items-list::-webkit-scrollbar-thumb { background: rgba(255,112,67,0.3); border-radius: 4px; }
+
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, #fff8f2, #fff4ec);
+      border-radius: 12px;
+      border: 1px solid rgba(255,112,67,0.12);
+      animation: slide-in 0.22s ease;
+    }
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .item-emoji { font-size: 1.5rem; line-height: 1; flex-shrink: 0; }
+
+    .item-info { flex: 1; min-width: 0; }
+    .item-name {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text);
+      text-transform: capitalize;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .item-detail {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    .item-cal {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--orange);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .item-cal span { font-size: 0.7rem; font-weight: 600; }
+
+    .btn-remove {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      color: rgba(200,100,80,0.4);
+      transition: color 0.1s, transform 0.1s;
+      flex-shrink: 0;
+      padding: 0 2px;
+    }
+    .btn-remove:hover { color: var(--red); transform: scale(1.2); }
+
+    .empty-hint {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 24px 0;
+      opacity: 0.6;
+    }
+
+    /* ── Total ── */
+    .total-card {
+      background: linear-gradient(135deg, var(--orange), #ff8a65);
+      border-radius: 18px;
+      padding: 18px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 8px 24px rgba(255,112,67,0.35);
+    }
+    .total-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: rgba(255,255,255,0.8);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .total-value {
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+    }
+    .total-value span { font-size: 1rem; font-weight: 600; }
+
+    .total-norm {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.7);
+      font-weight: 600;
+      margin-top: 3px;
+    }
+
+    /* Progress bar */
+    .progress-wrap {
+      margin-top: 12px;
+      background: rgba(255,255,255,0.25);
+      border-radius: 8px;
+      height: 6px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: #fff;
+      border-radius: 8px;
+      transition: width 0.5s ease;
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="food-canvas"></canvas>
+
+<div class="wrap">
+  <div class="header">
+    <h1>🥗 Калькулятор Калорій</h1>
+    <p>Введи продукт та кількість — дізнайся калорійність</p>
+  </div>
+
+  <!-- Input card -->
+  <div class="card">
+    <div class="search-row">
+      <div class="search-wrap">
+        <div class="input-label">Продукт</div>
+        <input
+          type="text"
+          id="foodInput"
+          placeholder="напр. банан, куряча грудка..."
+          autocomplete="off"
+          oninput="onSearch()"
+          onkeydown="onKeyDown(event)"
+        />
+        <div class="autocomplete" id="acList"></div>
+      </div>
+
+      <div>
+        <div class="input-label">Кількість</div>
+        <input
+          type="number"
+          id="qtyInput"
+          value="100"
+          min="1"
+          max="9999"
+          onkeydown="if(event.key==='Enter') addItem()"
+        />
+      </div>
+
+      <button class="btn-add" onclick="addItem()">+ Додати</button>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <!-- Total -->
+  <div class="total-card">
+    <div>
+      <div class="total-label">Всього калорій</div>
+      <div class="total-value"><span id="totalVal">0</span> <span>ккал</span></div>
+      <div class="total-norm" id="normText">Денна норма ~2000 ккал</div>
+    </div>
+    <div style="font-size:2.8rem;">🔥</div>
+  </div>
+  <div class="progress-wrap" style="margin-top:-10px; border-radius: 0 0 12px 12px; overflow:hidden;">
+    <div class="progress-bar" id="progressBar" style="width:0%"></div>
+  </div>
+
+  <!-- Items list -->
+  <div class="card" id="listCard" style="display:none;">
+    <div class="list-header">
+      <div class="list-title">Список продуктів</div>
+      <button class="btn-clear-list" onclick="clearAll()">Очистити</button>
+    </div>
+    <div class="items-list" id="itemsList"></div>
+  </div>
+</div>
+
+<script>
+// ── Food background canvas ────────────────────────────────────────────────────
+(function () {
+  const canvas = document.getElementById('food-canvas');
+  const ctx    = canvas.getContext('2d');
+
+  const EMOJIS = [
+    '🍎','🍌','🍊','🍇','🍓','🥑','🥕','🍕','🍔','🍗',
+    '🥚','🧀','🥦','🍫','🍩','🌽','🥩','🍣','🍜','🥗',
+    '🧁','🍰','🍟','🥝','🍑','🍒','🥜','🫐','🍆','🥞',
+    '🌮','🥐','🍞','🫙','🧆','🥙','🍱','🥘','🍲','🧇',
+  ];
+
+  let particles = [];
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function rnd(min, max) { return min + Math.random() * (max - min); }
+
+  function newParticle(fromBottom) {
+    return {
+      emoji:    EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
+      x:        rnd(0, canvas.width),
+      y:        fromBottom ? canvas.height + 60 : rnd(-60, canvas.height),
+      size:     rnd(20, 48),
+      speed:    rnd(0.25, 0.7),
+      drift:    rnd(-0.2, 0.2),
+      angle:    rnd(-0.5, 0.5),
+      spin:     rnd(-0.004, 0.004),
+      alpha:    rnd(0.12, 0.28),
+    };
+  }
+
+  for (let i = 0; i < 50; i++) particles.push(newParticle(false));
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const p of particles) {
+      p.y     -= p.speed;
+      p.x     += p.drift;
+      p.angle += p.spin;
+      if (p.y < -70) Object.assign(p, newParticle(true));
+
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      ctx.font = `${p.size}px serif`;
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(p.emoji, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  setInterval(draw, 45);
+})();
+
+// ── App state ─────────────────────────────────────────────────────────────────
+const DAILY_NORM = 2000;
+let items  = [];
+let acData = [];
+let acIdx  = -1;
+let selectedFood = null;
+
+// ── Autocomplete ──────────────────────────────────────────────────────────────
+async function onSearch() {
+  const q = document.getElementById('foodInput').value.trim();
+  selectedFood = null;
+  document.getElementById('errorMsg').textContent = '';
+
+  if (!q) { closeAc(); return; }
+
+  const res  = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+  acData = await res.json();
+  acIdx  = -1;
+
+  const list = document.getElementById('acList');
+  if (!acData.length) { closeAc(); return; }
+
+  list.innerHTML = acData.map((f, i) =>
+    `<div class="ac-item" data-i="${i}" onmousedown="selectAc(${i})">
+       <span class="ac-emoji">${f.emoji}</span>
+       <span>${f.name}</span>
+       <span class="ac-cal">${f.cal} ккал/100${f.unit}</span>
+     </div>`
+  ).join('');
+  list.classList.add('open');
+}
+
+function closeAc() {
+  document.getElementById('acList').classList.remove('open');
+  acData = [];
+  acIdx  = -1;
+}
+
+function selectAc(i) {
+  selectedFood = acData[i];
+  document.getElementById('foodInput').value = selectedFood.name;
+  closeAc();
+}
+
+function onKeyDown(e) {
+  const items = document.querySelectorAll('.ac-item');
+  if (e.key === 'ArrowDown') {
+    acIdx = Math.min(acIdx + 1, acData.length - 1);
+    refreshAcFocus(items);
+  } else if (e.key === 'ArrowUp') {
+    acIdx = Math.max(acIdx - 1, -1);
+    refreshAcFocus(items);
+  } else if (e.key === 'Enter') {
+    if (acIdx >= 0 && acData[acIdx]) { selectAc(acIdx); }
+    else { addItem(); }
+  } else if (e.key === 'Escape') {
+    closeAc();
+  }
+}
+
+function refreshAcFocus(els) {
+  els.forEach((el, i) => el.classList.toggle('focused', i === acIdx));
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) closeAc();
+});
+
+// ── Add item ──────────────────────────────────────────────────────────────────
+async function addItem() {
+  const name = document.getElementById('foodInput').value.trim().toLowerCase();
+  const qty  = parseFloat(document.getElementById('qtyInput').value);
+  const errEl = document.getElementById('errorMsg');
+  errEl.textContent = '';
+
+  if (!name) { errEl.textContent = 'Введи назву продукту'; return; }
+  if (!qty || qty <= 0) { errEl.textContent = 'Введи коректну кількість'; return; }
+
+  const res  = await fetch('/api/calories', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ name, qty }),
+  });
+  const data = await res.json();
+
+  if (data.error) { errEl.textContent = data.error; return; }
+
+  items.push(data);
+  document.getElementById('foodInput').value = '';
+  document.getElementById('qtyInput').value  = '100';
+  selectedFood = null;
+  render();
+}
+
+// ── Remove item ───────────────────────────────────────────────────────────────
+function removeItem(idx) {
+  items.splice(idx, 1);
+  render();
+}
+
+function clearAll() {
+  items = [];
+  render();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  const total = items.reduce((s, it) => s + it.total, 0);
+
+  // Total
+  document.getElementById('totalVal').textContent = Math.round(total);
+  const pct = Math.min((total / DAILY_NORM) * 100, 100);
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('normText').textContent =
+    total > 0
+      ? `${Math.round(pct)}% від денної норми (${DAILY_NORM} ккал)`
+      : 'Денна норма ~2000 ккал';
+
+  // List card visibility
+  const listCard = document.getElementById('listCard');
+  listCard.style.display = items.length ? 'block' : 'none';
+
+  // List items
+  const el = document.getElementById('itemsList');
+  if (!items.length) {
+    el.innerHTML = '<div class="empty-hint">Список порожній</div>';
+    return;
+  }
+
+  el.innerHTML = items.map((it, i) => `
+    <div class="item-row">
+      <span class="item-emoji">${it.emoji}</span>
+      <div class="item-info">
+        <div class="item-name">${it.name}</div>
+        <div class="item-detail">${it.qty}${it.unit} · ${it.cal} ккал/100${it.unit}</div>
+      </div>
+      <div class="item-cal">${it.total} <span>ккал</span></div>
+      <button class="btn-remove" onclick="removeItem(${i})" title="Видалити">✕</button>
+    </div>
+  `).join('');
+}
+</script>
+</body>
+</html>

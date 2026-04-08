@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scientific Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:       #080b12;
+      --card:     rgba(14, 20, 32, 0.92);
+      --display:  #050810;
+      --border:   rgba(88, 166, 255, 0.15);
+      --text:     #e6edf3;
+      --muted:    #7d8fa8;
+
+      --blue:     #58a6ff;
+      --green:    #3fb950;
+      --purple:   #bc8cff;
+      --orange:   #ffa657;
+      --red:      #f85149;
+      --teal:     #39d3c3;
+
+      --btn-num:  rgba(30, 40, 58, 0.9);
+      --btn-op:   rgba(88, 166, 255, 0.12);
+      --btn-trig: rgba(188, 140, 255, 0.12);
+      --btn-sci:  rgba(255, 166, 87, 0.10);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    /* ── Math background canvas ── */
+    #math-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Layout ── */
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .title {
+      text-align: center;
+      color: var(--blue);
+      font-size: 0.72rem;
+      letter-spacing: 4px;
+      font-weight: 500;
+      opacity: 0.85;
+    }
+
+    /* ── Card ── */
+    .calc {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      width: 390px;
+      backdrop-filter: blur(24px);
+      box-shadow:
+        0 0 0 1px rgba(88,166,255,0.06),
+        0 32px 64px rgba(0,0,0,0.7),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    /* ── Display ── */
+    .display {
+      background: var(--display);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px 12px;
+      margin-bottom: 14px;
+      min-height: 90px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .display::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--blue), transparent);
+      opacity: 0.4;
+    }
+
+    .mode-badge {
+      position: absolute;
+      top: 9px; left: 13px;
+      font-size: 0.55rem;
+      font-weight: 600;
+      letter-spacing: 2px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(88,166,255,0.12);
+      color: var(--blue);
+      border: 1px solid rgba(88,166,255,0.2);
+    }
+
+    .expression {
+      color: var(--muted);
+      font-size: 0.72rem;
+      text-align: right;
+      min-height: 16px;
+      word-break: break-all;
+      padding-right: 2px;
+    }
+
+    .result {
+      color: var(--text);
+      font-size: 1.85rem;
+      font-weight: 300;
+      text-align: right;
+      word-break: break-all;
+      margin-top: 4px;
+      transition: color 0.2s;
+      letter-spacing: -0.5px;
+    }
+
+    .result.error { color: var(--red); font-size: 1rem; font-weight: 400; }
+
+    @keyframes result-in {
+      from { opacity: 0.4; transform: translateX(6px); }
+      to   { opacity: 1;   transform: translateX(0); }
+    }
+    .result.animate { animation: result-in 0.18s ease; }
+
+    /* ── Mode toggle ── */
+    .mode-row {
+      display: flex;
+      margin-bottom: 10px;
+      gap: 6px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 2px;
+      padding: 7px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid rgba(88,166,255,0.2);
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+
+    .mode-btn.active {
+      background: rgba(88,166,255,0.15);
+      color: var(--blue);
+      border-color: rgba(88,166,255,0.45);
+    }
+
+    /* ── Button grid ── */
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+    }
+
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 12px 0;
+      border-radius: 9px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background 0.1s, border-color 0.12s, transform 0.08s, box-shadow 0.1s;
+      user-select: none;
+      letter-spacing: 0.3px;
+    }
+
+    button:active { transform: scale(0.92); }
+
+    /* Numbers */
+    .btn-num {
+      background: var(--btn-num);
+      color: var(--text);
+      border-color: rgba(255,255,255,0.06);
+    }
+    .btn-num:hover {
+      background: rgba(40, 54, 78, 0.95);
+      border-color: rgba(88,166,255,0.3);
+    }
+
+    /* Operators */
+    .btn-op {
+      background: var(--btn-op);
+      color: var(--blue);
+      border-color: rgba(88,166,255,0.18);
+    }
+    .btn-op:hover {
+      background: rgba(88,166,255,0.2);
+      border-color: var(--blue);
+    }
+
+    /* Trig */
+    .btn-trig {
+      background: var(--btn-trig);
+      color: var(--purple);
+      border-color: rgba(188,140,255,0.18);
+      font-size: 0.75rem;
+    }
+    .btn-trig:hover {
+      background: rgba(188,140,255,0.22);
+      border-color: var(--purple);
+    }
+
+    /* Scientific (sqrt, log, etc.) */
+    .btn-sci {
+      background: var(--btn-sci);
+      color: var(--orange);
+      border-color: rgba(255,166,87,0.18);
+      font-size: 0.78rem;
+    }
+    .btn-sci:hover {
+      background: rgba(255,166,87,0.2);
+      border-color: var(--orange);
+    }
+
+    /* Clear */
+    .btn-clear {
+      background: rgba(248,81,73,0.1);
+      color: var(--red);
+      border-color: rgba(248,81,73,0.2);
+    }
+    .btn-clear:hover {
+      background: rgba(248,81,73,0.2);
+      border-color: var(--red);
+    }
+
+    /* Equals */
+    .btn-eq {
+      background: rgba(63,185,80,0.14);
+      color: var(--green);
+      border-color: rgba(63,185,80,0.25);
+      font-size: 1.1rem;
+    }
+    .btn-eq:hover {
+      background: rgba(63,185,80,0.24);
+      border-color: var(--green);
+      box-shadow: 0 0 14px rgba(63,185,80,0.2);
+    }
+
+    .btn-zero { grid-column: span 2; }
+
+    /* ── Statusbar ── */
+    .statusbar {
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.56rem;
+      letter-spacing: 1.5px;
+      color: rgba(125,143,168,0.6);
+    }
+
+    .led {
+      display: inline-block;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 5px;
+      box-shadow: 0 0 6px var(--green);
+      animation: led-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes led-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="math-canvas"></canvas>
+
+<div class="container">
+  <div class="title">SCIENTIFIC CALCULATOR</div>
+
+  <div class="calc">
+    <div class="display">
+      <span class="mode-badge" id="modeBadge">DEG</span>
+      <div class="expression" id="expression"></div>
+      <div class="result"     id="result">0</div>
+    </div>
+
+    <!-- DEG / RAD toggle -->
+    <div class="mode-row">
+      <button class="mode-btn active" id="btnDeg" onclick="setMode('deg')">DEG</button>
+      <button class="mode-btn"        id="btnRad" onclick="setMode('rad')">RAD</button>
+    </div>
+
+    <div class="buttons">
+      <!-- Row 1: Trig -->
+      <button class="btn-trig" onclick="appendFn('sin(')">sin</button>
+      <button class="btn-trig" onclick="appendFn('cos(')">cos</button>
+      <button class="btn-trig" onclick="appendFn('tan(')">tan</button>
+      <button class="btn-num"  onclick="append('(')"> ( </button>
+      <button class="btn-num"  onclick="append(')')"> ) </button>
+
+      <!-- Row 2: Inverse trig -->
+      <button class="btn-trig" onclick="appendFn('asin(')">asin</button>
+      <button class="btn-trig" onclick="appendFn('acos(')">acos</button>
+      <button class="btn-trig" onclick="appendFn('atan(')">atan</button>
+      <button class="btn-sci"  onclick="appendFn('sqrt(')">√</button>
+      <button class="btn-sci"  onclick="append('^2')">x²</button>
+
+      <!-- Row 3: Scientific -->
+      <button class="btn-sci"  onclick="append('^')">xʸ</button>
+      <button class="btn-sci"  onclick="append('pi')">π</button>
+      <button class="btn-sci"  onclick="append('e')">e</button>
+      <button class="btn-sci"  onclick="appendFn('log(')">log</button>
+      <button class="btn-sci"  onclick="appendFn('ln(')">ln</button>
+
+      <!-- Row 4 -->
+      <button class="btn-clear" onclick="clearAll()">AC</button>
+      <button class="btn-clear" onclick="deleteLast()">⌫</button>
+      <button class="btn-op"    onclick="append('%')">%</button>
+      <button class="btn-op"    onclick="append('/')">÷</button>
+      <button class="btn-op"    onclick="append('*')">×</button>
+
+      <!-- Row 5 -->
+      <button class="btn-num" onclick="append('7')">7</button>
+      <button class="btn-num" onclick="append('8')">8</button>
+      <button class="btn-num" onclick="append('9')">9</button>
+      <button class="btn-op"  onclick="append('-')">−</button>
+      <button class="btn-op"  onclick="append('+')">+</button>
+
+      <!-- Row 6 -->
+      <button class="btn-num" onclick="append('4')">4</button>
+      <button class="btn-num" onclick="append('5')">5</button>
+      <button class="btn-num" onclick="append('6')">6</button>
+      <button class="btn-eq"  onclick="compute()" style="grid-row: span 2;">=</button>
+      <button class="btn-num" onclick="append('3')">3</button>
+
+      <!-- Row 7 -->
+      <button class="btn-num" onclick="append('1')">1</button>
+      <button class="btn-num" onclick="append('2')">2</button>
+      <button class="btn-num btn-zero" onclick="append('0')">0</button>
+      <button class="btn-num" onclick="append('.')">.</button>
+    </div>
+
+    <div class="statusbar">
+      <span><span class="led"></span>ONLINE</span>
+      <span id="statusMsg">READY</span>
+      <span>v3.0</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Math background ──────────────────────────────────────────────────────────
+(function () {
+  const canvas = document.getElementById('math-canvas');
+  const ctx = canvas.getContext('2d');
+
+  const FORMULAS = [
+    'sin²θ + cos²θ = 1',
+    'e^(iπ) + 1 = 0',
+    'a² + b² = c²',
+    '∫₀^∞ e^(−x²)dx = √π/2',
+    'lim(x→0) sin(x)/x = 1',
+    'F = ma',
+    'E = mc²',
+    '∇·E = ρ/ε₀',
+    '∑ 1/n² = π²/6',
+    'tan(θ) = sin(θ)/cos(θ)',
+    "d/dx sin(x) = cos(x)",
+    'ln(e) = 1',
+    'log(ab) = log a + log b',
+    'φ = (1+√5)/2',
+    'i² = −1',
+    '∂²u/∂t² = c²∇²u',
+    'cos(2θ) = 1 − 2sin²θ',
+    'Γ(n) = (n−1)!',
+    '∞',  'π ≈ 3.14159',  'e ≈ 2.71828',
+    '∑', '∫', '∂', '∇', 'Δ', 'λ', 'θ', 'φ', 'ω', 'α', 'β', 'μ', 'σ',
+  ];
+
+  const COLORS = [
+    'rgba(88,166,255,VAL)',
+    'rgba(188,140,255,VAL)',
+    'rgba(63,185,80,VAL)',
+    'rgba(255,166,87,VAL)',
+    'rgba(57,211,195,VAL)',
+  ];
+
+  let particles = [];
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function rndParticle(startAtBottom) {
+    const formula = FORMULAS[Math.floor(Math.random() * FORMULAS.length)];
+    const isShort  = formula.length <= 3;
+    const fontSize = isShort ? (18 + Math.random() * 24) : (11 + Math.random() * 9);
+    const alpha    = 0.04 + Math.random() * 0.10;
+    const colorTpl = COLORS[Math.floor(Math.random() * COLORS.length)];
+    return {
+      text:     formula,
+      x:        Math.random() * canvas.width,
+      y:        startAtBottom ? canvas.height + 40 : Math.random() * canvas.height,
+      fontSize,
+      color:    colorTpl.replace('VAL', alpha.toFixed(2)),
+      speed:    0.12 + Math.random() * 0.22,
+      drift:    (Math.random() - 0.5) * 0.15,
+      rotation: (Math.random() - 0.5) * 0.08,
+      angle:    (Math.random() - 0.5) * 0.4,
+    };
+  }
+
+  for (let i = 0; i < 55; i++) particles.push(rndParticle(false));
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const p of particles) {
+      p.y -= p.speed;
+      p.x += p.drift;
+      p.angle += p.rotation * 0.01;
+
+      if (p.y < -60) {
+        Object.assign(p, rndParticle(true));
+      }
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      ctx.font = `${p.fontSize}px "JetBrains Mono", monospace`;
+      ctx.fillStyle = p.color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(p.text, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  setInterval(draw, 50);
+})();
+
+// ── Calculator ────────────────────────────────────────────────────────────────
+let expr = '';
+let justComputed = false;
+let mode = 'deg';
+
+const exprEl   = document.getElementById('expression');
+const resultEl = document.getElementById('result');
+const statusEl = document.getElementById('statusMsg');
+const badgeEl  = document.getElementById('modeBadge');
+
+function setMode(m) {
+  mode = m;
+  badgeEl.textContent = m.toUpperCase();
+  document.getElementById('btnDeg').classList.toggle('active', m === 'deg');
+  document.getElementById('btnRad').classList.toggle('active', m === 'rad');
+}
+
+function animateResult() {
+  resultEl.classList.remove('animate');
+  void resultEl.offsetWidth;
+  resultEl.classList.add('animate');
+}
+
+function append(char) {
+  if (justComputed && /^[0-9.]$/.test(char)) {
+    expr = char;
+  } else if (justComputed && /^[+\-*/%^]$/.test(char)) {
+    justComputed = false;
+    expr += char;
+  } else {
+    if (justComputed) expr = '';
+    expr += char;
+  }
+  justComputed = false;
+  sync();
+  statusEl.textContent = 'INPUT';
+}
+
+function appendFn(fn) {
+  if (justComputed) { expr = ''; justComputed = false; }
+  expr += fn;
+  sync();
+  statusEl.textContent = 'INPUT';
+}
+
+function sync() {
+  exprEl.textContent = expr;
+  resultEl.className = 'result';
+  resultEl.textContent = expr || '0';
+}
+
+function clearAll() {
+  expr = '';
+  justComputed = false;
+  exprEl.textContent = '';
+  resultEl.className = 'result';
+  resultEl.textContent = '0';
+  statusEl.textContent = 'CLEARED';
+  setTimeout(() => statusEl.textContent = 'READY', 700);
+}
+
+function deleteLast() {
+  // If last chars are a function name like "sin(", remove whole token
+  const fnMatch = expr.match(/(sin|cos|tan|asin|acos|atan|sqrt|log|ln)\($$/);
+  if (fnMatch) {
+    expr = expr.slice(0, -(fnMatch[0].length));
+  } else {
+    expr = expr.slice(0, -1);
+  }
+  sync();
+}
+
+async function compute() {
+  if (!expr) return;
+  statusEl.textContent = 'COMPUTING...';
+  try {
+    const res  = await fetch('/calculate', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ expression: expr, mode }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      resultEl.className = 'result error';
+      resultEl.textContent = data.error.toUpperCase();
+      statusEl.textContent = 'ERROR';
+    } else {
+      exprEl.textContent = expr + ' =';
+      const num = parseFloat(data.result.toPrecision(12));
+      expr = String(num);
+      resultEl.className = 'result';
+      resultEl.textContent = expr;
+      animateResult();
+      justComputed = true;
+      statusEl.textContent = 'DONE';
+    }
+  } catch {
+    resultEl.className = 'result error';
+    resultEl.textContent = 'SERVER OFFLINE';
+    statusEl.textContent = 'ERROR';
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key >= '0' && e.key <= '9') append(e.key);
+  else if (['+', '-', '*', '/', '.', '%', '(', ')'].includes(e.key)) append(e.key);
+  else if (e.key === '^') append('^');
+  else if (e.key === 'Enter' || e.key === '=') compute();
+  else if (e.key === 'Backspace') deleteLast();
+  else if (e.key === 'Escape') clearAll();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kawaii Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --pink:       #ff8fab;
+      --pink-light: #ffb3c6;
+      --lavender:   #c8b6ff;
+      --mint:       #b5ead7;
+      --yellow:     #ffd6a5;
+      --peach:      #ffcfb3;
+      --bg-from:    #ffeaf4;
+      --bg-to:      #e8d5ff;
+      --card:       #ffffffcc;
+      --text:       #6b4f7c;
+      --muted:      #b998cc;
+      --shadow:     rgba(200, 130, 200, 0.25);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Nunito', sans-serif;
+      background: linear-gradient(135deg, var(--bg-from) 0%, var(--bg-to) 100%);
+      overflow: hidden;
+    }
+
+    /* Floating particles canvas */
+    #sparkle-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--pink);
+      text-shadow: 0 2px 8px rgba(255, 143, 171, 0.4);
+      letter-spacing: 1px;
+    }
+
+    .header .subtitle {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    /* Card */
+    .calc {
+      background: var(--card);
+      backdrop-filter: blur(20px);
+      border-radius: 32px;
+      padding: 24px;
+      width: 320px;
+      box-shadow:
+        0 20px 60px var(--shadow),
+        0 0 0 1.5px rgba(255, 143, 171, 0.3),
+        inset 0 1px 0 rgba(255,255,255,0.8);
+    }
+
+    /* Display */
+    .display {
+      background: linear-gradient(135deg, #fff0f7, #f3e8ff);
+      border: 2px solid rgba(255, 143, 171, 0.3);
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 16px;
+      min-height: 96px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .display::before {
+      content: '';
+      position: absolute;
+      top: -30px; right: -30px;
+      width: 80px; height: 80px;
+      background: radial-gradient(circle, rgba(255,143,171,0.15), transparent 70%);
+      border-radius: 50%;
+    }
+
+    .display-face {
+      position: absolute;
+      top: 8px; left: 12px;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .expression {
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-align: right;
+      min-height: 16px;
+      word-break: break-all;
+    }
+
+    .result {
+      color: var(--text);
+      font-size: 2rem;
+      font-weight: 800;
+      text-align: right;
+      word-break: break-all;
+      margin-top: 4px;
+      transition: color 0.2s, transform 0.15s;
+    }
+
+    .result.pop {
+      animation: pop 0.25s ease;
+    }
+
+    .result.error {
+      color: #ff6b9d;
+      font-size: 1rem;
+    }
+
+    @keyframes pop {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.06); }
+      100% { transform: scale(1); }
+    }
+
+    /* Button grid */
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    button {
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 14px 0;
+      border-radius: 16px;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.1s, box-shadow 0.1s, filter 0.1s;
+      user-select: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    button::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.3);
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+
+    button:hover::after { opacity: 1; }
+
+    button:active {
+      transform: scale(0.9) !important;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+    }
+
+    /* Number buttons */
+    .btn-num {
+      background: linear-gradient(145deg, #fff0f7, #ffe4f2);
+      color: var(--text);
+      box-shadow: 0 4px 12px rgba(255, 143, 171, 0.2), inset 0 1px 0 rgba(255,255,255,0.9);
+    }
+    .btn-num:hover {
+      box-shadow: 0 6px 16px rgba(255, 143, 171, 0.35), inset 0 1px 0 rgba(255,255,255,0.9);
+    }
+
+    /* Operator buttons */
+    .btn-op {
+      background: linear-gradient(145deg, #e8d5ff, #d4b8ff);
+      color: #7c5cbf;
+      box-shadow: 0 4px 12px rgba(200, 150, 255, 0.3), inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+    .btn-op:hover {
+      box-shadow: 0 6px 16px rgba(200, 150, 255, 0.45);
+    }
+
+    /* Clear button */
+    .btn-clear {
+      background: linear-gradient(145deg, #ffcce0, #ffb3c6);
+      color: #c0446a;
+      box-shadow: 0 4px 12px rgba(255, 100, 140, 0.25), inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+    .btn-clear:hover {
+      box-shadow: 0 6px 16px rgba(255, 100, 140, 0.4);
+    }
+
+    /* Equals button */
+    .btn-eq {
+      background: linear-gradient(145deg, #ffb3d1, #ff8fab);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(255, 100, 150, 0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+      grid-row: span 2;
+      font-size: 1.4rem;
+    }
+    .btn-eq:hover {
+      box-shadow: 0 8px 24px rgba(255, 100, 150, 0.55);
+    }
+
+    /* Zero */
+    .btn-zero { grid-column: span 2; }
+
+    /* Reaction bar */
+    .reaction-bar {
+      margin-top: 14px;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      min-height: 24px;
+    }
+
+    .reaction {
+      font-size: 1.2rem;
+      opacity: 0;
+      transform: translateY(10px) scale(0.5);
+      transition: opacity 0.3s, transform 0.3s;
+    }
+
+    .reaction.show {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="sparkle-canvas"></canvas>
+
+<div class="container">
+  <div class="header">
+    <h1>✿ kawaii calc ✿</h1>
+    <div class="subtitle">super cute & smart~</div>
+  </div>
+
+  <div class="calc">
+    <div class="display">
+      <span class="display-face" id="face">( ˘ ³˘)♥</span>
+      <div class="expression" id="expression"></div>
+      <div class="result" id="result">0</div>
+    </div>
+
+    <div class="buttons">
+      <button class="btn-clear" onclick="clearAll()">AC</button>
+      <button class="btn-clear" onclick="deleteLast()">⌫</button>
+      <button class="btn-op"    onclick="append('%')">%</button>
+      <button class="btn-op"    onclick="append('/')">÷</button>
+
+      <button class="btn-num"   onclick="append('7')">7</button>
+      <button class="btn-num"   onclick="append('8')">8</button>
+      <button class="btn-num"   onclick="append('9')">9</button>
+      <button class="btn-op"    onclick="append('*')">×</button>
+
+      <button class="btn-num"   onclick="append('4')">4</button>
+      <button class="btn-num"   onclick="append('5')">5</button>
+      <button class="btn-num"   onclick="append('6')">6</button>
+      <button class="btn-op"    onclick="append('-')">−</button>
+
+      <button class="btn-num"   onclick="append('1')">1</button>
+      <button class="btn-num"   onclick="append('2')">2</button>
+      <button class="btn-num"   onclick="append('3')">3</button>
+      <button class="btn-op"    onclick="append('+')">+</button>
+
+      <button class="btn-num btn-zero" onclick="append('0')">0</button>
+      <button class="btn-num"   onclick="append('.')">.</button>
+      <button class="btn-eq"    onclick="compute()">=</button>
+    </div>
+
+    <div class="reaction-bar" id="reactions">
+      <span class="reaction" id="r1">✨</span>
+      <span class="reaction" id="r2">🌸</span>
+      <span class="reaction" id="r3">💖</span>
+      <span class="reaction" id="r4">⭐</span>
+      <span class="reaction" id="r5">🍬</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Sparkle particles ──────────────────────────────────────────────────────
+  (function () {
+    const canvas = document.getElementById('sparkle-canvas');
+    const ctx = canvas.getContext('2d');
+    const SHAPES = ['✦', '✧', '✿', '♡', '⋆', '˚'];
+    const COLORS = ['#ffb3c6', '#c8b6ff', '#b5ead7', '#ffd6a5', '#ff8fab'];
+    let particles = [];
+
+    function resize() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function randomParticle() {
+      return {
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: 10 + Math.random() * 14,
+        opacity: 0,
+        maxOpacity: 0.25 + Math.random() * 0.35,
+        shape: SHAPES[Math.floor(Math.random() * SHAPES.length)],
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        speed: 0.2 + Math.random() * 0.4,
+        phase: Math.random() * Math.PI * 2,
+        drift: (Math.random() - 0.5) * 0.3,
+        fadeIn: true,
+      };
+    }
+
+    for (let i = 0; i < 35; i++) {
+      const p = randomParticle();
+      p.opacity = Math.random() * p.maxOpacity;
+      particles.push(p);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const t = Date.now() / 1000;
+
+      for (const p of particles) {
+        p.y -= p.speed * 0.4;
+        p.x += p.drift;
+        p.phase += 0.02;
+
+        if (p.fadeIn) {
+          p.opacity += 0.005;
+          if (p.opacity >= p.maxOpacity) p.fadeIn = false;
+        } else {
+          p.opacity -= 0.003;
+        }
+
+        if (p.opacity <= 0 || p.y < -30) {
+          Object.assign(p, randomParticle());
+          p.y = canvas.height + 10;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.opacity;
+        ctx.fillStyle = p.color;
+        ctx.font = `${p.size}px serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const wobble = Math.sin(p.phase) * 2;
+        ctx.fillText(p.shape, p.x + wobble, p.y);
+        ctx.restore();
+      }
+    }
+
+    setInterval(draw, 40);
+  })();
+
+  // ── Calculator ─────────────────────────────────────────────────────────────
+  let expr = '';
+  let justComputed = false;
+
+  const exprEl    = document.getElementById('expression');
+  const resultEl  = document.getElementById('result');
+  const faceEl    = document.getElementById('face');
+
+  const FACES_IDLE    = ['( ˘ ³˘)♥', '(ᵕ̈ )♡', '(˶ᵔ ᵕ ᵔ˶)', '(◕‿◕)'];
+  const FACES_HAPPY   = ['(≧◡≦)', '(ﾉ◕ヮ◕)ﾉ', '✧(ﾉ◕ヮ◕)ﾉ✧', '(˶˃ ᵕ ˂˶)'];
+  const FACES_THINK   = ['(｡•̀ᴗ-)✧', '(っ˘ω˘ς)', '(ﾟ｡ﾟ)', '(⸝⸝⸝ᵒ̴̶̷᷄д ᵒ̴̶̷᷅⸝⸝⸝)'];
+  const FACES_ERROR   = ['(⊙_⊙)？', '(˘ ³˘)? uh...', '(っ °Д °)っ'];
+
+  let idleTimer;
+
+  function randomFrom(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  function setFace(arr) {
+    faceEl.textContent = randomFrom(arr);
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      faceEl.textContent = randomFrom(FACES_IDLE);
+    }, 2000);
+  }
+
+  function popResult() {
+    resultEl.classList.remove('pop');
+    void resultEl.offsetWidth;
+    resultEl.classList.add('pop');
+  }
+
+  function showReactions() {
+    const ids = ['r1','r2','r3','r4','r5'];
+    ids.forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.classList.remove('show');
+      setTimeout(() => el.classList.add('show'), i * 60);
+      setTimeout(() => el.classList.remove('show'), 1200 + i * 60);
+    });
+  }
+
+  function append(char) {
+    if (justComputed && /[0-9.]/.test(char)) {
+      expr = char;
+    } else if (justComputed) {
+      justComputed = false;
+      expr += char;
+    } else {
+      expr += char;
+    }
+    justComputed = false;
+    exprEl.textContent = expr;
+    resultEl.className = 'result';
+    resultEl.textContent = expr || '0';
+    setFace(FACES_THINK);
+  }
+
+  function clearAll() {
+    expr = '';
+    justComputed = false;
+    exprEl.textContent = '';
+    resultEl.className = 'result';
+    resultEl.textContent = '0';
+    setFace(FACES_IDLE);
+  }
+
+  function deleteLast() {
+    expr = expr.slice(0, -1);
+    exprEl.textContent = expr;
+    resultEl.className = 'result';
+    resultEl.textContent = expr || '0';
+  }
+
+  async function compute() {
+    if (!expr) return;
+    setFace(FACES_THINK);
+    try {
+      const res  = await fetch('/calculate', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ expression: expr }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        resultEl.className = 'result error';
+        resultEl.textContent = data.error;
+        setFace(FACES_ERROR);
+      } else {
+        exprEl.textContent = expr + ' =';
+        const num = parseFloat(data.result.toPrecision(12));
+        expr = String(num);
+        resultEl.className = 'result';
+        resultEl.textContent = expr;
+        popResult();
+        showReactions();
+        setFace(FACES_HAPPY);
+        justComputed = true;
+      }
+    } catch {
+      resultEl.className = 'result error';
+      resultEl.textContent = 'server offline~';
+      setFace(FACES_ERROR);
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key >= '0' && e.key <= '9') append(e.key);
+    else if (['+', '-', '*', '/', '.', '%'].includes(e.key)) append(e.key);
+    else if (e.key === 'Enter' || e.key === '=') compute();
+    else if (e.key === 'Backspace') deleteLast();
+    else if (e.key === 'Escape') clearAll();
+  });
+</script>
+</body>
+</html>
