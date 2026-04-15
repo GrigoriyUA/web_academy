@@ -1,8 +1,7 @@
 import logging
-import os
 from datetime import date, timedelta
 
-from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     Application,
@@ -15,7 +14,14 @@ from telegram.ext import (
 from cities import CITIES
 from weather import get_forecast
 
-load_dotenv()
+
+class Settings(BaseSettings):
+    bot_token: str
+
+    model_config = {"env_file": ".env"}
+
+
+settings = Settings()
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -147,11 +153,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 def main() -> None:
-    token = os.getenv("BOT_TOKEN")
-    if not token or token == "your_telegram_bot_token_here":
-        raise ValueError("Вставте токен бота у файл .env (BOT_TOKEN=...)")
-
-    app = Application.builder().token(token).build()
+    app = Application.builder().token(settings.bot_token).build()
 
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
