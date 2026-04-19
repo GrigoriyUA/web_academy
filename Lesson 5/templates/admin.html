@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8">
+    <title>Адмін-панель</title>
+    <style>
+        body { font-family: Arial, sans-serif; background:#f5f7fb; margin:0; padding:0; }
+        .container { max-width:1100px; margin:30px auto; padding:20px; background:white; border-radius:12px; box-shadow:0 4px 18px rgba(0,0,0,0.08); }
+        h1 { margin-top:0; }
+        table { width:100%; border-collapse:collapse; }
+        th, td { padding:12px 10px; border-bottom:1px solid #e2e8f0; text-align:left; }
+        th { background:#f8fafc; }
+        .tag { display:inline-block; padding:4px 10px; border-radius:999px; background:#e2e8f0; }
+        .tag.admin { background:#c7f9cc; }
+        .tag.user { background:#dbeafe; }
+        .tag.guest { background:#fef3c7; }
+        .tag.banned { background:#fecaca; }
+        form { display:inline; }
+        select, input[type=text] { padding:6px 8px; margin-right:6px; border:1px solid #cbd5e1; border-radius:6px; }
+        button { padding:8px 12px; border:none; border-radius:7px; cursor:pointer; background:#2563eb; color:white; }
+        button.small { padding:6px 10px; }
+        .danger { background:#dc2626; }
+        .message { margin:10px 0; padding:10px; border-radius:8px; background:#d1fae5; color:#065f46; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Адмін-панель бота</h1>
+        <p>Адреса панелі: <b>{{ panel_url }}</b></p>
+        {% if message %}
+            <div class="message">{{ message }}</div>
+        {% endif %}
+        <p>Зарегістровані користувачі: <b>{{ users|length }}</b></p>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Telegram</th>
+                    <th>Ім'я</th>
+                    <th>Роль</th>
+                    <th>Статус</th>
+                    <th>Оновлено</th>
+                    <th>Дії</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for user in users %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.telegram_id }}</td>
+                    <td>{{ user.username or user.first_name or '—' }}</td>
+                    <td><span class="tag {{ user.role }}">{{ user.role }}</span></td>
+                    <td>{{ user.status }}</td>
+                    <td>{{ user.updated_at }}</td>
+                    <td>
+                        <form method="post" action="{{ url_for('update_user_role') }}">
+                            <input type="hidden" name="telegram_id" value="{{ user.telegram_id }}">
+                            <select name="role">
+                                <option value="guest" {% if user.role == 'guest' %}selected{% endif %}>guest</option>
+                                <option value="user" {% if user.role == 'user' %}selected{% endif %}>user</option>
+                                <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>admin</option>
+                            </select>
+                            <select name="status">
+                                <option value="active" {% if user.status == 'active' %}selected{% endif %}>active</option>
+                                <option value="pending" {% if user.status == 'pending' %}selected{% endif %}>pending</option>
+                                <option value="banned" {% if user.status == 'banned' %}selected{% endif %}>banned</option>
+                            </select>
+                            <button class="small" type="submit">Оновити</button>
+                        </form>
+                        <form method="post" action="{{ url_for('remove_user_view') }}" style="margin-top:4px;">
+                            <input type="hidden" name="telegram_id" value="{{ user.telegram_id }}">
+                            <button class="small danger" type="submit">Видалити</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <p><a href="{{ url_for('logout') }}">Вийти</a></p>
+    </div>
+</body>
+</html>
