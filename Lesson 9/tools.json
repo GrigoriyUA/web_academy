@@ -1,0 +1,61 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "save_user_preference",
+      "description": "Викликай цю функцію коли користувач повідомляє про свої уподобання, щоб зберегти їх для подальшого використання.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "description": "Унікальний ID користувача"
+          },
+          "preference": {
+            "type": "string",
+            "description": "Текст вподобання (наприклад, 'Любить темну тему' або 'Алергія на арахіс')"
+          }
+        },
+        "required": ["user_id", "preference"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "save_note",
+      "description": "Викликай цю функцію коли користувач хоче зберегти нотатку або важливу інформацію.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "description": "Унікальний ID користувача"
+          },
+          "note": {
+            "type": "string",
+            "description": "Текст нотатки (наприклад, 'Зустріч о 15:00' або 'Купити молоко')"
+          }
+        },
+        "required": ["user_id", "note"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_user_notes",
+      "description": "Викликай цю функцію коли потрібно отримати збережені нотатки користувача.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "description": "Унікальний ID користувача"
+          }
+        },
+        "required": ["user_id"]
+      }
+    }
+  }
+]

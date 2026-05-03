@@ -1,0 +1,78 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "save_user_preference",
+      "description": "Зберігає уподобання або ліміти користувача. Викликай коли користувач повідомляє про свої вподобання, обмеження або ліміти (наприклад, ліміт витрат).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "description": "Унікальний ID користувача"
+          },
+          "preference": {
+            "type": "string",
+            "description": "Текст вподобання або ліміту (наприклад, 'Ліміт витрат на таксі: 2000 грн/місяць')"
+          }
+        },
+        "required": ["user_id", "preference"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "add_expense",
+      "description": "Додає витрату до бази даних. Викликай коли користувач повідомляє про понесену витрату.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "description": "Унікальний ID користувача"
+          },
+          "amount": {
+            "type": "number",
+            "description": "Сума витрати в гривнях"
+          },
+          "category": {
+            "type": "string",
+            "description": "Категорія витрати (наприклад, 'таксі', 'їжа', 'розваги')"
+          },
+          "expense_date": {
+            "type": "string",
+            "description": "Дата витрати у форматі YYYY-MM-DD. Якщо не вказана — використовується сьогоднішня дата."
+          }
+        },
+        "required": ["user_id", "amount", "category"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_spending_stats",
+      "description": "Повертає суму витрат користувача за категорією та період. Викликай щоб дізнатись поточний стан витрат.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "description": "Унікальний ID користувача"
+          },
+          "category": {
+            "type": "string",
+            "description": "Категорія витрат (наприклад, 'таксі')"
+          },
+          "period": {
+            "type": "string",
+            "enum": ["month", "week", "year"],
+            "description": "Період для підрахунку: month — поточний місяць, week — останні 7 днів, year — поточний рік"
+          }
+        },
+        "required": ["user_id", "category", "period"]
+      }
+    }
+  }
+]
