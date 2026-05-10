@@ -1,0 +1,9 @@
+groq
+python-dotenv
+requests
+structlog
+fastapi
+uvicorn
+httpx
+psutil
+tenacity
